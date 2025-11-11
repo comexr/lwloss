@@ -41,6 +41,16 @@ jobs:
           # enabled by default, disable if your image is small and you want faster builds
           maximize_build_space: true
       - name: Build ISO
+        id: build
         uses: ublue-os/titanoboa@main
         with:
-          image-ref: ghcr.io/comexr/lwloss:latest
+          image-ref: ghcr.io/comexr/lwloss
+          hook-post-rootfs: ${{ github.workspace }}/iso_files/configure_iso_anaconda.sh
+          kargs: ""
+          builder-distro: fedora
+
+      - name: Rename and Checksum ISO
+        run: |
+          mkdir -p output
+          mv ${{ steps.build.outputs.iso-dest }} output/my-custom-image.iso
+          (cd output && sha256sum my-custom-image.iso | tee my-custom-image.iso-CHECKSUM)
