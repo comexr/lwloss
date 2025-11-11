@@ -2,50 +2,6 @@
 
 set -eoux pipefail
 
-IMAGE_INFO="$(cat /usr/share/ublue-os/image-info.json)"
-IMAGE_TAG="$(jq -c -r '."image-tag"' <<<"$IMAGE_INFO")"
-IMAGE_REF="$(jq -c -r '."image-ref"' <<<"$IMAGE_INFO")"
-IMAGE_REF="${IMAGE_REF##*://}"
-sbkey='https://github.com/ublue-os/akmods/raw/main/certs/public_key.der'
-
-# Configure Live Environment
-
-# Remove packages from liveCD to save space
-dnf remove -y google-noto-fonts-all ublue-brew ublue-motd yaru-theme || true
-
-# Setup dock
-tee /usr/share/glib-2.0/schemas/zz2-org.gnome.shell.gschema.override <<EOF
-[org.gnome.shell]
-welcome-dialog-last-shown-version='4294967295'
-favorite-apps = ['anaconda.desktop', 'documentation.desktop', 'discourse.desktop', 'org.mozilla.firefox.desktop', 'org.gnome.Nautilus.desktop']
-EOF
-
-# don't autostart gnome-software session service
-rm -f /etc/xdg/autostart/org.gnome.Software.desktop
-
-# disable the gnome-software shell search provider
-tee /usr/share/gnome-shell/search-providers/org.gnome.Software-search-provider.ini <<EOF
-DefaultDisabled=true
-EOF
-
-glib-compile-schemas /usr/share/glib-2.0/schemas
-
-systemctl disable rpm-ostree-countme.service
-systemctl disable tailscaled.service
-systemctl disable bootloader-update.service
-systemctl disable brew-upgrade.timer
-systemctl disable brew-update.timer
-systemctl disable brew-setup.service
-systemctl disable rpm-ostreed-automatic.timer
-systemctl disable uupd.timer
-systemctl disable ublue-system-setup.service
-systemctl disable ublue-guest-user.service
-systemctl disable check-sb-key.service
-systemctl disable flatpak-preinstall.service
-systemctl --global disable ublue-flatpak-manager.service
-systemctl --global disable podman-auto-update.timer
-systemctl --global disable ublue-user-setup.service
-
 # Configure Anaconda
 
 # Install Anaconda, Webui if >= F42
@@ -162,37 +118,5 @@ deployment="$(ostree rev-parse --repo=/mnt/sysimage/ostree/repo ostree/0/1/0)"
 target="/mnt/sysimage/ostree/deploy/default/deploy/$deployment.0/var/lib/"
 mkdir -p "$target"
 rsync -aAXUHKP /var/lib/flatpak "$target"
-%end
-EOF
-
-# Fetch the Secureboot Public Key
-curl --retry 15 -Lo /etc/sb_pubkey.der "$sbkey"
-
-# Enroll Secureboot Key
-tee /usr/share/anaconda/post-scripts/secureboot-enroll-key.ks <<'EOF'
-%post --erroronfail --nochroot
-set -oue pipefail
-
-readonly ENROLLMENT_PASSWORD="universalblue"
-readonly SECUREBOOT_KEY="/etc/sb_pubkey.der"
-
-if [[ ! -d "/sys/firmware/efi" ]]; then
-    echo "EFI mode not detected. Skipping key enrollment."
-    exit 0
-fi
-
-if [[ ! -f "$SECUREBOOT_KEY" ]]; then
-    echo "Secure boot key not provided: $SECUREBOOT_KEY"
-    exit 0
-fi
-
-SYS_ID="$(cat /sys/devices/virtual/dmi/id/product_name)"
-if [[ ":Jupiter:Galileo:" =~ ":$SYS_ID:" ]]; then
-    echo "Steam Deck hardware detected. Skipping key enrollment."
-    exit 0
-fi
-
-mokutil --timeout -1 || :
-echo -e "$ENROLLMENT_PASSWORD\n$ENROLLMENT_PASSWORD" | mokutil --import "$SECUREBOOT_KEY" || :
 %end
 EOF
