@@ -40,3 +40,7 @@ jobs:
 
           # enabled by default, disable if your image is small and you want faster builds
           maximize_build_space: true
+      - name: Build ISO
+        uses: ublue-os/titanoboa@main
+        with:
+          image-ref: ghcr.io/comexr/lwloss:latest
