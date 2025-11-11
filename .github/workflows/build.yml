@@ -40,6 +40,7 @@ jobs:
 
           # enabled by default, disable if your image is small and you want faster builds
           maximize_build_space: true
+
       - name: Build ISO
         id: build
         uses: ublue-os/titanoboa@main
@@ -49,8 +50,8 @@ jobs:
           kargs: ""
           builder-distro: fedora
 
-      - name: Rename and Checksum ISO
-        run: |
-          mkdir -p output
-          mv ${{ steps.build.outputs.iso-dest }} output/my-custom-image.iso
-          (cd output && sha256sum my-custom-image.iso | tee my-custom-image.iso-CHECKSUM)
+      - name: Upload ISO Artifact
+        uses: actions/upload-artifact@main
+        with:
+          name: ISO
+          path: ${{ steps.build.outputs.iso-dest }}
