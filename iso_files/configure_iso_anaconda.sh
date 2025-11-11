@@ -10,15 +10,9 @@ SPECS=(
     "libblockdev-lvm"
     "libblockdev-dm"
     "anaconda-live"
+    "anaconda-webui"
 )
-if [[ "$IMAGE_TAG" =~ lts ]]; then
-    dnf config-manager --set-enabled centos-release-kmods-kernel
-    dnf copr enable -y jreilly/anaconda-webui
 
-    SPECS+=("anaconda-webui")
-elif [[ "$(rpm -E %fedora)" -ge 42 ]]; then
-    SPECS+=("anaconda-webui")
-fi
 dnf install -y "${SPECS[@]}"
 
 dnf config-manager --set-disabled centos-hyperscale &>/dev/null || true
